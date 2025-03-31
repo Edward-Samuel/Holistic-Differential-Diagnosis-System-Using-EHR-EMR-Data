@@ -303,15 +303,26 @@ class DiagnosisModel:
 
     def get_all_symptoms(self) -> Dict[str, List[str]]:
         """Get all available symptoms categorized as primary and secondary."""
+        # Create sets to store unique symptoms
         primary_symptoms = set()
         secondary_symptoms = set()
         
+        # Process each disease's symptoms
         for disease_data in self.disease_symptom_map.values():
-            primary_symptoms.update(disease_data["primary"].keys())
-            secondary_symptoms.update(disease_data["secondary"].keys())
+            # Add primary symptoms, ensuring they're normalized
+            for symptom in disease_data["primary"].keys():
+                normalized = symptom.strip().lower()
+                if normalized:  # Only add non-empty symptoms
+                    primary_symptoms.add(normalized)
+            
+            # Add secondary symptoms, ensuring they're normalized
+            for symptom in disease_data["secondary"].keys():
+                normalized = symptom.strip().lower()
+                if normalized and normalized not in primary_symptoms:  # Avoid duplicates with primary
+                    secondary_symptoms.add(normalized)
         
-        # Convert to sorted lists for consistent ordering
+        # Convert to sorted lists and capitalize first letter of each word for display
         return {
-            "primary_symptoms": sorted(list(primary_symptoms)),
-            "secondary_symptoms": sorted(list(secondary_symptoms))
+            "primary_symptoms": sorted([s.title() for s in primary_symptoms]),
+            "secondary_symptoms": sorted([s.title() for s in secondary_symptoms])
         }
