@@ -3,6 +3,7 @@ from typing import Dict, List, Optional
 from bson import ObjectId
 import json
 from datetime import datetime
+from gridfs import GridFS
 
 class JSONEncoder(json.JSONEncoder):
     def default(self, o):
@@ -16,6 +17,7 @@ class MongoDB:
     def __init__(self):
         self.client = MongoClient('mongodb://localhost:27017/')
         self.db = self.client['diagnosis_system']
+        self.fs = GridFS(self.db)
         
     def get_patient_history(self, patient_id: str) -> Dict:
         """Retrieve patient history from the database."""
@@ -101,6 +103,42 @@ class MongoDB:
                 if isinstance(value, datetime):
                     case[key] = value.isoformat()
         return cases
+
+    def save_report_pdf(self, patient_id: str, pdf_data: bytes, report_date: datetime) -> str:
+        """Save a PDF report to GridFS."""
+        try:
+            file_id = self.fs.put(
+                pdf_data,
+                filename=f"report_{patient_id}_{report_date.strftime('%Y%m%d_%H%M%S')}.pdf",
+                patient_id=patient_id,
+                report_date=report_date
+            )
+            return str(file_id)
+        except Exception as e:
+            print(f"Error saving PDF: {e}")
+            return None
+            
+    def get_report_pdf(self, file_id: str) -> Optional[bytes]:
+        """Retrieve a PDF report from GridFS."""
+        try:
+            file_id = ObjectId(file_id)
+            if self.fs.exists(file_id):
+                grid_out = self.fs.get(file_id)
+                return grid_out.read()
+        except Exception as e:
+            print(f"Error retrieving PDF: {e}")
+        return None
+        
+    def get_patient_reports(self, patient_id: str) -> List[Dict]:
+        """Get all reports for a patient."""
+        reports = []
+        for grid_out in self.fs.find({"patient_id": patient_id}):
+            reports.append({
+                "file_id": str(grid_out._id),
+                "filename": grid_out.filename,
+                "report_date": grid_out.report_date
+            })
+        return sorted(reports, key=lambda x: x["report_date"], reverse=True)
 
     def close(self):
         """Close the MongoDB connection."""

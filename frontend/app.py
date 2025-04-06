@@ -4,6 +4,18 @@ import json
 import pandas as pd
 import plotly.graph_objects as go
 from typing import List, Dict
+import base64
+import sys
+import os
+from pathlib import Path
+
+# Add project root to Python path
+project_root = str(Path(__file__).parent.parent)
+if project_root not in sys.path:
+    sys.path.append(project_root)
+
+# Now we can import from utils
+from utils.report_generator import DiagnosticReportGenerator
 
 # Configure the app
 st.set_page_config(
@@ -116,6 +128,30 @@ def create_diagnosis_chart(diagnoses: List[str], probabilities: List[float]) -> 
     
     return fig
 
+def generate_pdf_report(patient_data: Dict, analysis_result: Dict, primary_symptoms: List[str], secondary_symptoms: List[str]) -> bytes:
+    """Generate a PDF report with the analysis results using the DiagnosticReportGenerator"""
+    report_generator = DiagnosticReportGenerator()
+    
+    # Format diagnoses and confidence scores for the report
+    diagnoses = analysis_result.get("diagnoses", [])
+    # Convert to percentages for the report generator
+    confidence_scores = [score * 100 for score in analysis_result.get("confidence_scores", [])]
+    recommended_tests = analysis_result.get("recommended_tests", [])
+    analysis_summary = analysis_result.get("analysis_summary", "")
+    
+    # Generate the report
+    pdf_data = report_generator.generate_report(
+        patient_data=patient_data,
+        primary_symptoms=primary_symptoms,
+        secondary_symptoms=secondary_symptoms,
+        diagnoses=diagnoses,
+        confidence_scores=confidence_scores,
+        recommended_tests=recommended_tests,
+        analysis_summary=analysis_summary
+    )
+    
+    return pdf_data
+
 def main():
     st.title("AI-Powered Differential Diagnosis System")
     
@@ -193,6 +229,15 @@ def main():
                                 analysis_result.get("diagnoses", []),
                                 analysis_result.get("confidence_scores", [])
                             ), use_container_width=True)
+                            
+                            # Add download button for the report
+                            pdf_report = generate_pdf_report(patient_data, analysis_result, primary_symptoms, secondary_symptoms)
+                            st.download_button(
+                                label="Download Report",
+                                data=pdf_report,
+                                file_name=f"medical_report_{patient_id}.pdf",
+                                mime="application/pdf",
+                            )
                             
                             # Display recommendations
                             st.subheader("Recommended Tests")
