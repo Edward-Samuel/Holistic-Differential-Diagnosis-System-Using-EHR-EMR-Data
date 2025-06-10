@@ -18,8 +18,8 @@ class SymptomAnalyzer:
                 if 'generateContent' in m.supported_generation_methods:
                     print(f"Found model: {m.name}")
             
-            # Use gemini-1.5-pro model
-            self.model = genai.GenerativeModel('models/gemini-1.5-pro')
+            # Use gemini-1.5-flash model
+            self.model = genai.GenerativeModel('models/gemini-1.5-flash')
             
             # Test the model
             response = self.model.generate_content("Hello")
